@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+    <head>
+        <title>Sokoban</title>
+        <style>
+            body {
+                text-align: center;
+            }
+            p, button {
+                font-size: 25px;
+            }
+        </style>
+        <script src="./sokoban-fases.js"></script>
+        <script>
+            "use strict";
+
+            // Fases do jogo:
+
+            let faseAtual;
+            let mapa;
+
+            const PAREDE = "#";
+            const FUNDO = ".";
+            const VAZIO = " ";
+            const CAIXA = "+";
+            const DEPOSITO = "o";
+            const CAIXA_NO_DEPOSITO = "*";
+            const JOGADOR = "@";
+            const JOGADOR_NO_DEPOSITO = "!";
+
+            // Partes de desenho:
+
+            const tamanhoCelula = 30;
+
+            function acharCanvas() {
+                return document.querySelector("canvas");
+            }
+
+            function acharContexto() {
+                return acharCanvas().getContext("2d");
+            }
+
+            function desenharParede(linha, coluna) {
+                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
+                const ctx = acharContexto();
+                ctx.fillStyle = "red";
+                ctx.beginPath();
+                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
+            }
+
+            function desenharFundo(linha, coluna) {
+                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
+                const ctx = acharContexto();
+                ctx.fillStyle = "black";
+                ctx.beginPath();
+                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
+            }
+
+            function desenharChao(linha, coluna) {
+                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
+                const ctx = acharContexto();
+                ctx.fillStyle = "white";
+                ctx.beginPath();
+                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
+            }
+
+            function desenharCaixa(linha, coluna) {
+                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
+                const ctx = acharContexto();
+                ctx.fillStyle = "green";
+                ctx.beginPath();
+                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
+            }
+
+            function desenharDeposito(linha, coluna) {
+                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
+                const ctx = acharContexto();
+                ctx.fillStyle = "cyan";
+                ctx.beginPath();
+                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
+            }
+
+            function desenharCaixaNoDeposito(linha, coluna) {
+                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
+                const ctx = acharContexto();
+                ctx.fillStyle = "yellow";
+                ctx.beginPath();
+                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
+            }
+
+            function desenharJogador(linha, coluna) {
+                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
+                const ctx = acharContexto();
+                ctx.fillStyle = "blue";
+                ctx.beginPath();
+                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
+            }
+
+            const FUNCOES_DESENHO = {};
+            FUNCOES_DESENHO[PAREDE             ] = desenharParede         ;
+            FUNCOES_DESENHO[FUNDO              ] = desenharFundo          ;
+            FUNCOES_DESENHO[VAZIO              ] = desenharChao           ;
+            FUNCOES_DESENHO[CAIXA              ] = desenharCaixa          ;
+            FUNCOES_DESENHO[DEPOSITO           ] = desenharDeposito       ;
+            FUNCOES_DESENHO[CAIXA_NO_DEPOSITO  ] = desenharCaixaNoDeposito;
+            FUNCOES_DESENHO[JOGADOR            ] = desenharJogador        ;
+            FUNCOES_DESENHO[JOGADOR_NO_DEPOSITO] = desenharJogador        ;
+
+            function desenharCelula(linha, coluna) {
+                const celula = mapa[linha][coluna];
+                FUNCOES_DESENHO[celula](linha, coluna);
+            }
+
+            function desenhar() {
+                acharCanvas().height = tamanhoCelula * mapa.length;
+                acharCanvas().width = tamanhoCelula * mapa[0].length;
+                for (let linha = 0; linha < mapa.length; linha++) {
+                    for (let coluna = 0; coluna < mapa[0].length; coluna++) {
+                        desenharCelula(linha, coluna);
+                    }
+                }
+            }
+
+            // Parte de funcionamento:
+
+            function testarFases() {
+                const CELULAS_JOGADORES = JOGADOR + JOGADOR_NO_DEPOSITO;
+                const CELULAS_CAIXAS = CAIXA + CAIXA_NO_DEPOSITO;
+                const CELULAS_DEPOSITOS = DEPOSITO + CAIXA_NO_DEPOSITO + JOGADOR_NO_DEPOSITO;
+                const CELULAS_PAREDES = PAREDE + FUNDO;
+                const CELULAS_TUDO = CELULAS_JOGADORES + CELULAS_CAIXAS + CELULAS_DEPOSITOS + CELULAS_PAREDES + VAZIO;
+                for (let numero = 0; numero < fases.length; numero++) {
+                    const fase = fases[numero];
+                    const tamanho = fase[0].length;
+                    let caixas = 0, depositos = 0, jogadores = 0;
+                    for (const linha of fase) {
+                        if (linha.length !== tamanho) throw new Error("A fase não é retangular.");
+                        for (const celula of linha.split("")) {
+                            if (!CELULAS_TUDO.includes(celula)) throw new Error(`Célula não identificada ${celula} na fase ${numero}.`);
+                            if (CELULAS_JOGADORES.includes(celula)) jogadores++;
+                            if (CELULAS_DEPOSITOS.includes(celula)) depositos++;
+                            if (CELULAS_CAIXAS.includes(celula)) caixas++;
+                        }
+                    }
+                    if (jogadores !== 1) throw new Error(`Deveria haver só um jogador na fase ${numero}.`);
+                    if (caixas !== depositos) throw new Error(`Há ${caixas} caixas e ${depositos} depósitos na fase ${numero}.`);
+                }
+            }
+
+            function carregarFase(qual) {
+                faseAtual = qual;
+                mapa = [...fases[qual]].map(x => x.split(""));
+                desenhar();
+            }
+
+            function passarDeFase() {
+                carregarFase(faseAtual + 1);
+            }
+
+            function conteudo(linha, coluna) {
+                if (linha < 0 || coluna < 0 || linha >= mapa.length || coluna >= mapa[0].length) return FUNDO;
+                return mapa[linha][coluna];
+            }
+
+            function definirConteudo(linha, coluna, oQue) {
+                mapa[linha][coluna] = oQue;
+            }
+
+            function ganhou() {
+                for (let linha = 0; linha < mapa.length; linha++) {
+                    for (let coluna = 0; coluna < mapa[0].length; coluna++) {
+                        const oQueTemAqui = conteudo(linha, coluna);
+                        if (oQueTemAqui === CAIXA || oQueTemAqui === DEPOSITO || oQueTemAqui === JOGADOR_NO_DEPOSITO) return false;
+                    }
+                }
+                return true;
+            }
+
+            function acharJogador() {
+                for (let linha = 0; linha < mapa.length; linha++) {
+                    for (let coluna = 0; coluna < mapa[0].length; coluna++) {
+                        const oQueTemAqui = conteudo(linha, coluna);
+                        if (oQueTemAqui === JOGADOR || oQueTemAqui === JOGADOR_NO_DEPOSITO) return [linha, coluna, oQueTemAqui];
+                    }
+                }
+                throw new Error("A fase não tem jogador!");
+            }
+
+            function processarTeclado(evento) {
+                const dicionario = {
+                    "ArrowLeft": "esquerda",
+                    "ArrowRight": "direita",
+                    "ArrowUp": "sobe",
+                    "ArrowDown": "desce"
+                };
+                const toque = dicionario[evento.code];
+
+                if (!toque) return; // Nenhuma tecla que nos interessa.
+                evento.preventDefault();
+                if (evento.repeat) return; // Ignora repetições por não ter soltado a tecla.
+
+                mover(toque);
+            }
+
+            function mover(direcao) {
+                const [jogadorY, jogadorX, aqui] = acharJogador();
+                let [proximoX, proximoY, outroX, outroY] = [jogadorX, jogadorY, jogadorX, jogadorY];
+                if (direcao === "esquerda") {
+                    proximoX = jogadorX - 1;
+                    outroX = proximoX - 1;
+                } else if (direcao === "direita") {
+                    proximoX = jogadorX + 1;
+                    outroX = proximoX + 1;
+                } else if (direcao === "sobe") {
+                    proximoY = jogadorY - 1;
+                    outroY = proximoY - 1;
+                } else if (direcao === "desce") {
+                    proximoY = jogadorY + 1;
+                    outroY = proximoY + 1;
+                } else {
+                    throw new Error("Algo muito estranho aconteceu.");
+                }
+
+                const proximo = conteudo(proximoY, proximoX);
+                const outro = conteudo(outroY, outroX);
+
+                let futuroAqui;
+                if (aqui === JOGADOR) {
+                    futuroAqui = VAZIO;
+                } else if (aqui === JOGADOR_NO_DEPOSITO) {
+                    futuroAqui = DEPOSITO;
+                } else {
+                    throw new Error("Algo muito estranho aconteceu.");
+                }
+
+                let empurrando = false;
+                let futuroProximo;
+                if (proximo === VAZIO) {
+                    futuroProximo = JOGADOR;
+                    empurrando = false;
+                } else if (proximo === DEPOSITO) {
+                    futuroProximo = JOGADOR_NO_DEPOSITO;
+                    empurrando = false;
+                } else if (proximo === CAIXA) {
+                    futuroProximo = JOGADOR;
+                    empurrando = true;
+                } else if (proximo === CAIXA_NO_DEPOSITO) {
+                    futuroProximo = JOGADOR_NO_DEPOSITO;
+                    empurrando = true;
+                } else {
+                    // Vai embora sem alterar nada.
+                    // O jogador está batendo a cara na parede ou numa caixa que não pode empurrar.
+                    return;
+                }
+
+                if (empurrando) {
+                    let futuroOutro;
+                    if (outro === VAZIO) {
+                        futuroOutro = CAIXA;
+                    } else if (outro === DEPOSITO) {
+                        futuroOutro = CAIXA_NO_DEPOSITO;
+                    } else {
+                        // Vai embora sem alterar nada.
+                        // O jogador está tentando empurrar uma caixa contra a parede ou contra outra caixa.
+                        return;
+                    }
+                    definirConteudo(outroY, outroX, futuroOutro);
+                }
+                definirConteudo(proximoY, proximoX, futuroProximo);
+                definirConteudo(jogadorY, jogadorX, futuroAqui);
+
+                if (ganhou()) passarDeFase();
+
+                desenhar();
+            }
+
+            function carregado() {
+                try {
+                    testarFases();
+                } catch (e) {
+                    alert("" + e);
+                }
+                const canvas = acharCanvas();
+                const divFases = document.getElementById("fases");
+                document.addEventListener("keydown", processarTeclado);
+                for (let fase = 0; fase < fases.length; fase++) {
+                    if (fase % 10 === 0 && fase !== 0) {
+                        const br = document.createElement("br");
+                        divFases.appendChild(br);
+                    }
+                    const b = document.createElement("button");
+                    b.innerHTML = "" + fase;
+                    b.addEventListener("click", function(e) {
+                        carregarFase(fase);
+                    });
+                    divFases.appendChild(b);
+                }
+                carregarFase(1);
+            }
+
+            function reiniciar() {
+                carregarFase(faseAtual);
+            }
+        </script>
+    </head>
+    <body onload="carregado()">
+        <h1>Sokoban</h1>
+        <div id="fases"></div>
+        <canvas></canvas>
+        <br>
+        <button type="button" onclick="reiniciar()">Reiniciar</button>
+    </body>
+</html>
