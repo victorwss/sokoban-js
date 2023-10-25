@@ -6,11 +6,22 @@
             body {
                 text-align: center;
             }
+
             p, button {
                 font-size: 25px;
             }
+
+            button:not(:last-child) {
+                width: 40px;
+            }
+
+            button.jogando {
+                background: blue;
+                color: white;
+            }
         </style>
         <script src="./sokoban-fases.js"></script>
+        <script src="./sokoban-desenho-2.js"></script>
         <script>
             "use strict";
 
@@ -30,81 +41,15 @@
 
             // Partes de desenho:
 
-            const tamanhoCelula = 30;
-
-            function acharCanvas() {
-                return document.querySelector("canvas");
-            }
-
-            function acharContexto() {
-                return acharCanvas().getContext("2d");
-            }
-
-            function desenharParede(linha, coluna) {
-                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
-                const ctx = acharContexto();
-                ctx.fillStyle = "red";
-                ctx.beginPath();
-                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
-            }
-
-            function desenharFundo(linha, coluna) {
-                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
-                const ctx = acharContexto();
-                ctx.fillStyle = "black";
-                ctx.beginPath();
-                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
-            }
-
-            function desenharChao(linha, coluna) {
-                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
-                const ctx = acharContexto();
-                ctx.fillStyle = "white";
-                ctx.beginPath();
-                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
-            }
-
-            function desenharCaixa(linha, coluna) {
-                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
-                const ctx = acharContexto();
-                ctx.fillStyle = "green";
-                ctx.beginPath();
-                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
-            }
-
-            function desenharDeposito(linha, coluna) {
-                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
-                const ctx = acharContexto();
-                ctx.fillStyle = "cyan";
-                ctx.beginPath();
-                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
-            }
-
-            function desenharCaixaNoDeposito(linha, coluna) {
-                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
-                const ctx = acharContexto();
-                ctx.fillStyle = "yellow";
-                ctx.beginPath();
-                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
-            }
-
-            function desenharJogador(linha, coluna) {
-                const [py, px] = [linha * tamanhoCelula, coluna * tamanhoCelula];
-                const ctx = acharContexto();
-                ctx.fillStyle = "blue";
-                ctx.beginPath();
-                ctx.fillRect(px, py, px + tamanhoCelula, py + tamanhoCelula);
-            }
-
             const FUNCOES_DESENHO = {};
-            FUNCOES_DESENHO[PAREDE             ] = desenharParede         ;
-            FUNCOES_DESENHO[FUNDO              ] = desenharFundo          ;
-            FUNCOES_DESENHO[VAZIO              ] = desenharChao           ;
-            FUNCOES_DESENHO[CAIXA              ] = desenharCaixa          ;
-            FUNCOES_DESENHO[DEPOSITO           ] = desenharDeposito       ;
-            FUNCOES_DESENHO[CAIXA_NO_DEPOSITO  ] = desenharCaixaNoDeposito;
-            FUNCOES_DESENHO[JOGADOR            ] = desenharJogador        ;
-            FUNCOES_DESENHO[JOGADOR_NO_DEPOSITO] = desenharJogador        ;
+            FUNCOES_DESENHO[PAREDE             ] = desenharParede           ;
+            FUNCOES_DESENHO[FUNDO              ] = desenharFundo            ;
+            FUNCOES_DESENHO[VAZIO              ] = desenharChao             ;
+            FUNCOES_DESENHO[CAIXA              ] = desenharCaixa            ;
+            FUNCOES_DESENHO[DEPOSITO           ] = desenharDeposito         ;
+            FUNCOES_DESENHO[CAIXA_NO_DEPOSITO  ] = desenharCaixaNoDeposito  ;
+            FUNCOES_DESENHO[JOGADOR            ] = desenharJogador          ;
+            FUNCOES_DESENHO[JOGADOR_NO_DEPOSITO] = desenharJogadorNoDeposito;
 
             function desenharCelula(linha, coluna) {
                 const celula = mapa[linha][coluna];
@@ -150,6 +95,8 @@
             function carregarFase(qual) {
                 faseAtual = qual;
                 mapa = [...fases[qual]].map(x => x.split(""));
+                document.querySelector("button.jogando")?.classList?.remove("jogando");
+                document.querySelector("button.f-" + qual).classList.add("jogando");
                 desenhar();
             }
 
@@ -289,13 +236,18 @@
                         divFases.appendChild(br);
                     }
                     const b = document.createElement("button");
-                    b.innerHTML = "" + fase;
+                    if (fase === fases.length - 1) {
+                        b.innerHTML = "Fim";
+                    } else {
+                        b.innerHTML = "" + fase;
+                    }
+                    b.classList.add("f-" + fase);
                     b.addEventListener("click", function(e) {
                         carregarFase(fase);
                     });
                     divFases.appendChild(b);
                 }
-                carregarFase(1);
+                carregarFase(0);
             }
 
             function reiniciar() {
